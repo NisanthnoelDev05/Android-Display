@@ -451,7 +451,7 @@ void PositionImmersiveButton(HWND hwndMain, AppState* s) {
             HFONT hCapFont = CreateModernFont(hwndMain, 9, FW_NORMAL);
             HFONT hOld = static_cast<HFONT>(SelectObject(hdc, hCapFont));
             RECT rcCalc = { 0, 0, availW, ScaleDpi(24, dpi) };
-            DrawTextExW(hdc, buf, -1, &rcCalc, DT_SINGLELINE | DT_END_ELLIPSIS | DT_MODIFYSTRING | DT_NOPREFIX, nullptr);
+            DrawTextExW(hdc, buf, -1, &rcCalc, DT_CALCRECT | DT_SINGLELINE | DT_END_ELLIPSIS | DT_MODIFYSTRING | DT_NOPREFIX, nullptr);
             SelectObject(hdc, hOld);
             DeleteObject(hCapFont);
             ReleaseDC(hwndMain, hdc);
@@ -1917,10 +1917,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
 
+    case 0x00AE: // WM_NCUAHDRAWCAPTION
+    case 0x00AF: // WM_NCUAHDRAWFRAME
+        return 0;
+
     case WM_SETTEXT: {
-        LRESULT res = DefWindowProcW(hwnd, uMsg, wParam, lParam);
-        InvalidateRect(hwnd, nullptr, FALSE);
-        return res;
+        LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        if (style & WS_VISIBLE) {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, style & ~WS_VISIBLE);
+            LRESULT res = DefWindowProcW(hwnd, uMsg, wParam, lParam);
+            SetWindowLongPtrW(hwnd, GWL_STYLE, style);
+            return res;
+        }
+        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
     case WM_ERASEBKGND:
